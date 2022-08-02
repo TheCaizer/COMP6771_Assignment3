@@ -33,7 +33,7 @@ namespace gdwg {
 			E weight;
 		};
 
-		// deafult constructor
+		// default constructor
 		graph() noexcept = default;
 		// using iterator to initialize the list constructor since its the same as using iterator
 		graph(std::initializer_list<N> il)
@@ -159,7 +159,7 @@ namespace gdwg {
 				}
 				// make a new edge and erase the old one
 				struct edge n_edge = edge{new_source, new_dest, ptr->weight};
-				edges_.ease(ptr);
+				edges_.erase(ptr);
 				// check if edge exist
 				if (edges_.find(n_edge) == edges_.end()) {
 					edges_.emplace(std::make_shared<edge>(n_edge));
@@ -200,7 +200,7 @@ namespace gdwg {
 				       && erase_edge->weight == weight;
 			});
 			// Check if it has erased any edges
-			return !num_erased == 0;
+			return !(num_erased == 0);
 			// time complexity = O(2log(n) + e) = O(log(n) + e)
 		}
 		// erase edge using a iterator implemened after iterator implemented
@@ -216,17 +216,19 @@ namespace gdwg {
 		// Accessors
 		// check if a node exist with value
 		// since nodes_ is a set, find will be a O(log(n)) time complexity
-		[[nodiscard]] auto is_node(N const& value) noexcept -> bool {
+		// const it so that a const graph can also use this function
+		[[nodiscard]] auto is_node(N const& value) const noexcept -> bool {
 			return nodes_.find(value) != nodes_.end();
 		}
 
 		// check if nodes set are empty
-		[[nodiscard]] auto empty() noexcept -> bool {
+		// const it so that a const graph can also use this function
+		[[nodiscard]] auto empty() const noexcept -> bool {
 			return nodes_.empty();
 		}
 
 		// check if two nodes are connected
-		[[nodiscard]] auto is_connected(N const& src, N const& dst) -> bool {
+		[[nodiscard]] auto is_connected(N const& src, N const& dst) const -> bool {
 			if (!is_node(src) || !is_node(dst)) {
 				throw std::runtime_error("Cannot call gdwg::graph<N, E>::is_connected if src or dst "
 				                         "node don't exist in the graph");
@@ -238,7 +240,7 @@ namespace gdwg {
 		}
 
 		// gets in ascending order of all stored nodes
-		[[nodiscard]] auto nodes() noexcept -> std::vector<N> {
+		[[nodiscard]] auto nodes() const -> std::vector<N> {
 			auto ret = std::vector<N>();
 			// for each node push back into vector n complexity since it goes through the nodes_
 			std::for_each(nodes_.begin(), nodes_.end(), [&ret](auto const& node_ptr) {
@@ -247,8 +249,8 @@ namespace gdwg {
 			return ret;
 		}
 
-		// gets the dequence of weights between two nodes
-		[[nodiscard]] auto weights(N const& src, N const& dst) -> std::vector<E> {
+		// gets the sequence of weights between two nodes
+		[[nodiscard]] auto weights(N const& src, N const& dst) const -> std::vector<E> {
 			// log(n) time
 			if (!is_node(src) || !is_node(dst)) {
 				throw std::runtime_error("Cannot call gdwg::graph<N, E>::weights if src or dst node "
@@ -256,7 +258,7 @@ namespace gdwg {
 			}
 			auto ret = std::vector<E>();
 			// e time
-			std::for_each(edges_.begin(), edges_.end(), [&dst, &src](auto const& edge_ptr) {
+			std::for_each(edges_.begin(), edges_.end(), [&dst, &src, &ret](auto const& edge_ptr) {
 				if (*(edge_ptr->source) == src && *(edge_ptr->dest) == dst) {
 					ret.push_back(edge_ptr->weight);
 				}
@@ -266,13 +268,13 @@ namespace gdwg {
 		}
 
 		// finds edge with src, dst and weight
-		[[nodiscard]] auto find(N const& src, N const& dst, E const& weight) -> iterator {
+		[[nodiscard]] auto find(N const& src, N const& dst, E const& weight) const -> iterator {
 			// use the set find function should be log(n) + log(e)
 			return iterator{edges_.find(value_type{src, dst, weight})};
 		}
 
 		// find the sequence of nodes connected to src
-		[[nodiscard]] auto connections(N const& src) -> std::vector<N> {
+		[[nodiscard]] auto connections(N const& src) const -> std::vector<N> {
 			// log(n) time complexity
 			if (!is_node(src)) {
 				throw std::runtime_error("Cannot call gdwg::graph<N, E>::connections if src doesn't "
@@ -280,7 +282,7 @@ namespace gdwg {
 			}
 			auto ret = std::vector<N>();
 			// time to go through edge = e
-			std::for_each(edges_.begin(), edges_.end(), [&src](auto const& edge_ptr) {
+			std::for_each(edges_.begin(), edges_.end(), [&src, &ret](auto const& edge_ptr) {
 				if (*(edge_ptr->source) == src) {
 					ret.push_back(*(edge_ptr->dest));
 				}
@@ -297,16 +299,17 @@ namespace gdwg {
 		}
 		// Comparision
 		// check if two graphs are the same
-		[[nodiscard]] auto operator==(graph const& other) noexcept -> bool {
+		// should be const qualified: https://edstem.org/au/courses/8629/discussion/944057
+		[[nodiscard]] auto operator==(graph const& other) const noexcept -> bool {
 			// use the std::equals function to check if the nodes set and edge sets are equal
 			// by checking each node and all the source, dest and weight for the edges. In O(n + e)
 			// since it traverse through both graph once
-			auto node_equal = std::equal(nodes_.being(),
+			auto node_equal = std::equal(nodes_.begin(),
 			                             nodes_.end(),
 			                             other.nodes_.begin(),
 			                             other.nodes_.end(),
 			                             [](auto const& lhs, auto const& rhs) { return *lhs == *rhs; });
-			auto edge_equal = std::equal(edges_.being(),
+			auto edge_equal = std::equal(edges_.begin(),
 			                             edges_.end(),
 			                             other.edges_.begin(),
 			                             other.edges_.end(),
@@ -325,7 +328,7 @@ namespace gdwg {
 				os << *node_ptr << " (\n";
 				std::for_each(g.edges_.begin(), g.edges_.end(), [&, node_ptr](auto const& edge_ptr) {
 					if (*(edge_ptr->source) == *node_ptr) {
-						os << " " << *(edge_ptr->dest) << " | " << edge_ptr->weight << "\n";
+						os << "  " << *(edge_ptr->dest) << " | " << edge_ptr->weight << "\n";
 					}
 				});
 				os << ")\n";
@@ -464,13 +467,13 @@ namespace gdwg {
 	template<typename N, typename E>
 	// erase edge given the iterator and return next element
 	auto graph<N, E>::erase_edge(iterator i) -> iterator {
-		if (i == end()) {
+		// for when it is the end of the iterator or when it is the begin of the iterator
+		// since it would seg fault if not here
+		if (i == end() || i == iterator{}) {
 			return end();
 		}
-		auto ret = i;
-		ret++;
-		i.erase();
-		return ret;
+		// use the sets erase
+		return iterator{edges_.erase(i.iter_)};
 	}
 	// erase edge in O(d) time where d is the number of edges between i and s
 	template<typename N, typename E>
